@@ -21,6 +21,8 @@ export interface TimeEntry {
   projectId?: string;
   tagIds: string[];
   notes?: string;
+  targetDuration?: number; // in seconds
+  isWorkingBreak?: boolean;
 }
 
 export interface DayStats {

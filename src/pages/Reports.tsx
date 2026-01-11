@@ -64,7 +64,7 @@ export function Reports() {
 
         // Calculate overlap duration for each entry
         const workSeconds = dayEntries
-            .filter(e => e.type === 'work')
+            .filter(e => e.type === 'work' || (e.type === 'break' && e.isWorkingBreak))
             .reduce((acc, e) => {
                 const s = Math.max(e.startTime, dayStart);
                 const end = Math.min(e.endTime || Date.now(), dayEnd);
@@ -84,7 +84,7 @@ export function Reports() {
     const projectMap = new Map<string, number>();
     let noProjectSeconds = 0;
 
-    filteredEntries.filter(e => e.type === 'work').forEach(e => {
+    filteredEntries.filter(e => e.type === 'work' || (e.type === 'break' && e.isWorkingBreak)).forEach(e => {
         // Calculate overlap with range
         const s = Math.max(e.startTime, range.start.getTime());
         const end = Math.min(e.endTime || Date.now(), range.end.getTime());

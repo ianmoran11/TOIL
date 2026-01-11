@@ -20,6 +20,7 @@ export function EntryEditor({ entry, isOpen, onClose, onSave }: EntryEditorProps
   const [projectId, setProjectId] = useState('');
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
+  const [isWorkingBreak, setIsWorkingBreak] = useState(false);
 
   // Initialize form when opening
   useEffect(() => {
@@ -31,6 +32,7 @@ export function EntryEditor({ entry, isOpen, onClose, onSave }: EntryEditorProps
         setProjectId(entry.projectId || '');
         setTagIds(entry.tagIds || []);
         setNotes(entry.notes || '');
+        setIsWorkingBreak(entry.isWorkingBreak || false);
       } else {
         // Reset for new entry
         setType('work');
@@ -39,6 +41,7 @@ export function EntryEditor({ entry, isOpen, onClose, onSave }: EntryEditorProps
         setProjectId('');
         setTagIds([]);
         setNotes('');
+        setIsWorkingBreak(false);
       }
     }
   }, [isOpen, entry]);
@@ -62,7 +65,8 @@ export function EntryEditor({ entry, isOpen, onClose, onSave }: EntryEditorProps
       endTime: end,
       projectId: projectId || undefined,
       tagIds,
-      notes
+      notes,
+      isWorkingBreak: type === 'break' ? isWorkingBreak : false
     });
     onClose();
   };
@@ -108,6 +112,18 @@ export function EntryEditor({ entry, isOpen, onClose, onSave }: EntryEditorProps
               <span>Break</span>
             </label>
           </div>
+
+          {type === 'break' && (
+             <label className="flex items-center gap-2 mb-4 bg-muted/50 p-2 rounded">
+              <input 
+                type="checkbox" 
+                checked={isWorkingBreak} 
+                onChange={(e) => setIsWorkingBreak(e.target.checked)}
+                className="accent-primary h-4 w-4"
+              />
+              <span className="text-sm">Is Working Break? (Counts towards work hours)</span>
+            </label>
+          )}
 
           {/* Time Inputs */}
           <div className="grid grid-cols-2 gap-4">

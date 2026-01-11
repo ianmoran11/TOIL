@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTimeStore } from '../store/useTimeStore';
 import { format, isToday, differenceInSeconds } from 'date-fns';
-import { Play, Square, Coffee, Briefcase, Plus, Edit2 } from 'lucide-react';
+import { Play, Square, Coffee, Briefcase, Plus, Edit2, Timer, Laptop } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { EntryEditor } from '../components/EntryEditor';
 import type { TimeEntry } from '../types';
@@ -19,6 +19,8 @@ export function Dashboard() {
   const [now, setNow] = useState(Date.now());
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | undefined>(undefined);
+  
+  const lastVibratedEntryId = useRef<string | null>(null);
 
   const handleEdit = (entry: TimeEntry) => {
     setEditingEntry(entry);
@@ -47,46 +49,108 @@ export function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const activeEntry = entries.find(e => e.endTime === null);
-  
+  const currentDuration = activeEntry 
+    ? differenceInSeconds(now, activeEntry.startTime) 
+    : 0;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+        const currentTime = Date.now();
+        setNow(currentTime);
+
+        if (activeEntry && activeEntry.targetDuration) {
+           const duration = differenceInSeconds(currentTime, activeEntry.startTime);
+           // Vibrate if reached target (+/- 1s buffer) and haven't vibrated yet for this entry
+           if (duration >= activeEntry.targetDuration && lastVibratedEntryId.current !== activeEntry.id) {
+               if (navigator.vibrate) {
+                   navigator.vibrate([200, 100, 200, 100, 500]);
+               }
+               lastVibratedEntryId.current = activeEntry.id;
+           }
+        }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeEntry]);
+
+  // Reset vibration tracking when entry changes
+  useEffect(() => {
+      if (!activeEntry) {
+          lastVibratedEntryId.current = null;
+      } else if (activeEntry.id !== lastVibratedEntryId.current) {
+          // New entry started, logic handled in timer loop condition
+      }
+  }, [activeEntry?.id]);
+
   // Calculate Today's Stats
   const todayEntries = entries.filter(e => isToday(e.startTime));
   
-  const calculateTotalSeconds = (type: 'work' | 'break') => {
+  const calculateTotalSeconds = (category: 'active' | 'rest') => {
     return todayEntries
-      .filter(e => e.type === type)
+      .filter(e => {
+          if (category === 'active') {
+              return e.type === 'work' || (e.type === 'break' && e.isWorkingBreak);
+          } else {
+              return e.type === 'break' && !e.isWorkingBreak;
+          }
+      })
       .reduce((acc, entry) => {
         const end = entry.endTime || now;
         return acc + differenceInSeconds(end, entry.startTime);
       }, 0);
   };
 
-  const totalWorkSeconds = calculateTotalSeconds('work');
-  const totalBreakSeconds = calculateTotalSeconds('break');
-  
-  const currentDuration = activeEntry 
-    ? differenceInSeconds(now, activeEntry.startTime) 
-    : 0;
+  const totalWorkSeconds = calculateTotalSeconds('active');
+  const totalBreakSeconds = calculateTotalSeconds('rest');
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
       {/* Main Timer Card */}
       <div className="bg-card border rounded-xl p-8 shadow-sm text-center space-y-6">
-        <div className="space-y-2">
-          <h2 className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
-            {activeEntry ? (activeEntry.type === 'work' ? 'Working' : 'On Break') : 'Idle'}
-          </h2>
-          <div className={cn("text-6xl font-mono font-bold tabular-nums", 
-            activeEntry?.type === 'work' ? "text-primary" : 
-            activeEntry?.type === 'break' ? "text-orange-500" : "text-muted-foreground"
-          )}>
-            {formatDuration(currentDuration)}
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
+                {activeEntry ? (activeEntry.type === 'work' ? 'Working' : (activeEntry.isWorkingBreak ? 'Working Break' : 'On Rest')) : 'Idle'}
+            </h2>
+            <div className={cn("text-6xl font-mono font-bold tabular-nums mt-2", 
+                activeEntry?.type === 'work' ? "text-primary" : 
+                activeEntry?.type === 'break' ? (activeEntry.isWorkingBreak ? "text-blue-400" : "text-orange-500") : "text-muted-foreground"
+            )}>
+                {formatDuration(currentDuration)}
+            </div>
+          
+            {activeEntry?.targetDuration && (
+                <div className="text-sm text-muted-foreground mt-2 flex items-center justify-center gap-2">
+                    <Timer size={14} /> 
+                    Target: {Math.floor(activeEntry.targetDuration / 60)}m 
+                    ({formatDuration(Math.max(0, activeEntry.targetDuration - currentDuration))} remaining)
+                </div>
+            )}
           </div>
+
+          {/* Quick Target Selectors */}
+          {activeEntry && (
+              <div className="flex justify-center gap-2">
+                  {activeEntry.type === 'work' && [25, 55, 85].map(m => (
+                      <button
+                        key={m}
+                        onClick={() => updateEntry(activeEntry.id, { targetDuration: m * 60 })}
+                        className="px-2 py-1 text-xs border rounded hover:bg-accent"
+                      >
+                          {m}m
+                      </button>
+                  ))}
+                  {activeEntry.type === 'break' && [5, 10, 30].map(m => (
+                      <button
+                        key={m}
+                        onClick={() => updateEntry(activeEntry.id, { targetDuration: m * 60 })}
+                        className="px-2 py-1 text-xs border rounded hover:bg-accent"
+                      >
+                          {m}m
+                      </button>
+                  ))}
+              </div>
+          )}
         </div>
 
         <div className="flex justify-center gap-4 flex-wrap">
@@ -99,13 +163,23 @@ export function Dashboard() {
               >
                 <Play size={20} /> Start Work
               </button>
-              <button
-                onClick={() => startEntry('break')}
-                className="flex items-center gap-2 bg-secondary text-secondary-foreground px-6 py-3 rounded-lg hover:bg-secondary/80 transition-colors"
-                aria-label="Start Break"
-              >
-                <Coffee size={20} /> Start Break
-              </button>
+              
+              <div className="flex flex-col gap-2">
+                <button
+                    onClick={() => startEntry('break', undefined, [], undefined, false)} // Rest Break
+                    className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-secondary/80 transition-colors"
+                    aria-label="Rest Break"
+                >
+                    <Coffee size={20} /> Rest Break
+                </button>
+                <button
+                    onClick={() => startEntry('break', undefined, [], undefined, true)} // Working Break
+                    className="flex items-center gap-2 bg-blue-100 text-blue-900 px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors dark:bg-blue-900 dark:text-blue-100"
+                    aria-label="Working Break"
+                >
+                    <Laptop size={20} /> Working Break
+                </button>
+              </div>
             </>
           )}
 
@@ -120,13 +194,22 @@ export function Dashboard() {
               </button>
               
               {activeEntry.type === 'work' && (
+                <div className="flex flex-col gap-2">
                  <button
-                 onClick={() => startEntry('break')}
-                 className="flex items-center gap-2 bg-secondary text-secondary-foreground px-6 py-3 rounded-lg hover:bg-secondary/80 transition-colors"
-                 aria-label="Switch to Break"
-               >
-                 <Coffee size={20} /> Switch to Break
-               </button>
+                   onClick={() => startEntry('break', undefined, [], undefined, false)}
+                   className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-secondary/80 transition-colors"
+                   aria-label="Switch to Rest"
+                 >
+                   <Coffee size={20} /> Switch to Rest
+                 </button>
+                 <button
+                   onClick={() => startEntry('break', undefined, [], undefined, true)}
+                   className="flex items-center gap-2 bg-blue-100 text-blue-900 px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors dark:bg-blue-900 dark:text-blue-100"
+                   aria-label="Switch to Working Break"
+                 >
+                   <Laptop size={20} /> Switch to Working Break
+                 </button>
+                </div>
               )}
 
               {activeEntry.type === 'break' && (
@@ -135,7 +218,7 @@ export function Dashboard() {
                  className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
                  aria-label="Switch to Work"
                >
-                 <Briefcase size={20} /> Switch to Work
+                 <Briefcase size={20} /> Work
                </button>
               )}
             </>

@@ -8,7 +8,7 @@ interface TimeStore {
   tags: Tag[];
 
   // Actions
-  startEntry: (type: EntryType, projectId?: string, tagIds?: string[]) => void;
+  startEntry: (type: EntryType, projectId?: string, tagIds?: string[], targetDuration?: number, isWorkingBreak?: boolean) => void;
   stopEntry: () => void;
   addManualEntry: (entry: Omit<TimeEntry, 'id'>) => void;
   updateEntry: (id: string, updates: Partial<TimeEntry>) => void;
@@ -35,10 +35,16 @@ export const useTimeStore = create<TimeStore>()(
       projects: [],
       tags: [],
 
-      startEntry: (type, projectId, tagIds = []) => {
+      startEntry: (type, projectId, tagIds = [], targetDuration, isWorkingBreak) => {
         const now = Date.now();
         const { entries } = get();
         
+        // Defaults
+        let target = targetDuration;
+        if (target === undefined) {
+           target = type === 'work' ? 25 * 60 : 5 * 60;
+        }
+
         // Find if there is an active entry
         const activeEntryIndex = entries.findIndex(e => e.endTime === null);
         let newEntries = [...entries];
@@ -57,6 +63,8 @@ export const useTimeStore = create<TimeStore>()(
           type,
           projectId,
           tagIds,
+          targetDuration: target,
+          isWorkingBreak: isWorkingBreak || false,
         };
 
         newEntries.push(newEntry);
