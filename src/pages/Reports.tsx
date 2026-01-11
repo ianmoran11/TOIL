@@ -11,13 +11,33 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, Legend 
 } from 'recharts';
-import { cn } from '../lib/utils'; // Keep as internal import for now
+import { cn } from '../lib/utils';
+import { ScheduleTimeline } from '../components/ScheduleTimeline';
+import { EntryEditor } from '../components/EntryEditor';
+import { Calendar, BarChart2 } from 'lucide-react';
+import type { TimeEntry } from '../types';
 
 type Period = 'day' | 'week' | 'fortnight' | 'month';
+type ViewMode = 'stats' | 'timeline';
 
 export function Reports() {
-  const { entries, projects } = useTimeStore();
+  const { entries, projects, updateEntry, deleteEntry } = useTimeStore();
   const [period, setPeriod] = useState<Period>('week');
+  const [viewMode, setViewMode] = useState<ViewMode>('stats');
+  
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<TimeEntry | undefined>(undefined);
+
+  const handleEdit = (entry: TimeEntry) => {
+    setEditingEntry(entry);
+    setIsEditorOpen(true);
+  };
+
+  const handleSaveEntry = (entry: Partial<TimeEntry>) => {
+    if (entry.id) {
+        updateEntry(entry.id, entry);
+    }
+  };
   
   // Calculate Range
   const range = useMemo(() => {
@@ -118,7 +138,29 @@ export function Reports() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">Reports</h1>
+        <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold">Reports</h1>
+            <div className="flex p-1 bg-card border rounded-lg h-10">
+                <button
+                    onClick={() => setViewMode('stats')}
+                    className={cn(
+                        "px-3 py-1 text-sm font-medium rounded-md transition-colors flex items-center gap-2",
+                        viewMode === 'stats' ? "bg-primary text-primary-foreground shadow-sm" : "hover:text-primary"
+                    )}
+                >
+                    <BarChart2 size={16} /> Stats
+                </button>
+                <button
+                    onClick={() => setViewMode('timeline')}
+                    className={cn(
+                        "px-3 py-1 text-sm font-medium rounded-md transition-colors flex items-center gap-2",
+                        viewMode === 'timeline' ? "bg-primary text-primary-foreground shadow-sm" : "hover:text-primary"
+                    )}
+                >
+                    <Calendar size={16} /> Timeline
+                </button>
+            </div>
+        </div>
         
         <div className="flex p-1 bg-card border rounded-lg">
             {(['day', 'week', 'fortnight', 'month'] as Period[]).map((p) => (
@@ -146,58 +188,74 @@ export function Reports() {
          </div>
       </div>
 
-      <div className="grid gap-8 md:grid-cols-2">
-         {/* Bar Chart */}
-         <div className="bg-card border rounded-xl p-6 shadow-sm min-h-[400px] flex flex-col">
-            <h3 className="tex-lg font-semibold mb-6">Work Schedule</h3>
-            <div className="flex-1 w-full relative">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={barData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}h`} />
-                        <Tooltip 
-                            cursor={{ fill: 'transparent' }}
-                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                        />
-                        <Bar dataKey="workHours" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
-         </div>
-
-         {/* Pie Chart */}
-         <div className="bg-card border rounded-xl p-6 shadow-sm min-h-[400px] flex flex-col">
-            <h3 className="tex-lg font-semibold mb-6">Project Distribution</h3>
-            <div className="flex-1 w-full relative">
-                 {pieData.length > 0 ? (
+      {viewMode === 'stats' ? (
+        <div className="grid gap-8 md:grid-cols-2">
+            {/* Bar Chart */}
+            <div className="bg-card border rounded-xl p-6 shadow-sm min-h-[400px] flex flex-col">
+                <h3 className="tex-lg font-semibold mb-6">Work Schedule</h3>
+                <div className="flex-1 w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={pieData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={60}
-                                outerRadius={100}
-                                paddingAngle={5}
-                                dataKey="value"
-                            >
-                                {pieData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                            <Legend />
-                        </PieChart>
+                        <BarChart data={barData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}h`} />
+                            <Tooltip 
+                                cursor={{ fill: 'transparent' }}
+                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            />
+                            <Bar dataKey="workHours" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
                     </ResponsiveContainer>
-                 ) : (
-                    <div className="h-full flex items-center justify-center text-muted-foreground">
-                        No data for this period
-                    </div>
-                 )}
+                </div>
             </div>
-         </div>
-      </div>
+
+            {/* Pie Chart */}
+            <div className="bg-card border rounded-xl p-6 shadow-sm min-h-[400px] flex flex-col">
+                <h3 className="tex-lg font-semibold mb-6">Project Distribution</h3>
+                <div className="flex-1 w-full relative">
+                    {pieData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={pieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={100}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {pieData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="h-full flex items-center justify-center text-muted-foreground">
+                            No data for this period
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+      ) : (
+        <ScheduleTimeline 
+            days={eachDayOfInterval(range)}
+            entries={filteredEntries}
+            onEdit={handleEdit}
+        />
+      )}
+
+      <EntryEditor 
+        isOpen={isEditorOpen} 
+        onClose={() => setIsEditorOpen(false)} 
+        onSave={handleSaveEntry}
+        onDelete={(id) => deleteEntry(id)}
+        entry={editingEntry}
+      />
     </div>
   );
 }

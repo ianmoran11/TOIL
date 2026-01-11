@@ -2,16 +2,17 @@ import { useState, useEffect } from 'react';
 import { useTimeStore } from '../store/useTimeStore';
 import type { TimeEntry, EntryType } from '../types';
 import { format } from 'date-fns';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 
 interface EntryEditorProps {
   entry?: TimeEntry; // If provided, edit mode
   isOpen: boolean;
   onClose: () => void;
   onSave: (entry: Partial<TimeEntry>) => void;
+  onDelete?: (id: string) => void;
 }
 
-export function EntryEditor({ entry, isOpen, onClose, onSave }: EntryEditorProps) {
+export function EntryEditor({ entry, isOpen, onClose, onSave, onDelete }: EntryEditorProps) {
   const { projects, tags } = useTimeStore();
 
   const [type, setType] = useState<EntryType>('work');
@@ -197,20 +198,37 @@ export function EntryEditor({ entry, isOpen, onClose, onSave }: EntryEditorProps
             />
           </div>
 
-          <div className="pt-2 flex justify-end gap-2">
-            <button 
-              type="button" 
-              onClick={onClose}
-              className="px-4 py-2 border rounded-md hover:bg-accent"
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-            >
-              Save
-            </button>
+          <div className="pt-2 flex justify-between items-center gap-2">
+            {entry && onDelete ? (
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (confirm('Are you sure you want to delete this entry?')) {
+                            onDelete(entry.id);
+                            onClose();
+                        }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 text-destructive hover:bg-destructive/10 rounded-md"
+                >
+                    <Trash2 size={16} /> Delete
+                </button>
+            ) : <div />} {/* Spacer */}
+            
+            <div className="flex gap-2">
+                <button 
+                type="button" 
+                onClick={onClose}
+                className="px-4 py-2 border rounded-md hover:bg-accent"
+                >
+                Cancel
+                </button>
+                <button 
+                type="submit" 
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                >
+                Save
+                </button>
+            </div>
           </div>
 
         </form>

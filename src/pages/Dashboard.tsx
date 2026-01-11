@@ -15,7 +15,7 @@ const formatDuration = (seconds: number) => {
 };
 
 export function Dashboard() {
-  const { entries, startEntry, stopEntry, addManualEntry, updateEntry } = useTimeStore();
+  const { entries, startEntry, stopEntry, addManualEntry, updateEntry, deleteEntry } = useTimeStore();
   const [now, setNow] = useState(Date.now());
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | undefined>(undefined);
@@ -288,6 +288,7 @@ export function Dashboard() {
         isOpen={isEditorOpen} 
         onClose={() => setIsEditorOpen(false)}
         onSave={handleSaveEntry}
+        onDelete={(id) => deleteEntry(id)}
         entry={editingEntry}
       />
     </div>
