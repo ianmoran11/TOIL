@@ -1,23 +1,38 @@
 import type { TimeEntry } from '../types';
-import { format, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '../lib/utils';
 
 interface ScheduleTimelineProps {
   days: Date[];
   entries: TimeEntry[];
   onEdit: (entry: TimeEntry) => void;
+  startHour?: number;
+  endHour?: number;
 }
 
-export function ScheduleTimeline({ days, entries, onEdit }: ScheduleTimelineProps) {
+export function ScheduleTimeline({ days, entries, onEdit, startHour = 6, endHour = 20 }: ScheduleTimelineProps) {
   
-  // Hours markers for X-axis (0, 3, 6, 9, 12, 15, 18, 21)
-  const hours = [0, 3, 6, 9, 12, 15, 18, 21];
+  const totalHours = endHour - startHour;
+  // Generate markers every 3 hours, ensuring we include start but fit within range
+  // Or just every hour or every 2 hours depending on density?
+  // Let's do every 2 hours if range is small, or 3 if large.
+  // 6am to 8pm is 14 hours.
+  const hours: number[] = [];
+  for (let h = startHour; h <= endHour; h++) {
+      if ((h - startHour) % 2 === 0) hours.push(h); // Every 2 hours
+  }
 
   const getEntryStyle = (entry: TimeEntry) => {
     // Determine color based on type
     if (entry.type === 'work') return 'bg-primary/80 border-primary hover:bg-primary';
     if (entry.isWorkingBreak) return 'bg-blue-400/80 border-blue-400 hover:bg-blue-400';
     return 'bg-orange-400/80 border-orange-400 hover:bg-orange-400'; // Rest break
+  };
+
+  const getPercent = (hour: number, minute: number = 0) => {
+      const totalMinutes = totalHours * 60;
+      const currentMinutes = (hour - startHour) * 60 + minute;
+      return (currentMinutes / totalMinutes) * 100;
   };
 
   return (
@@ -32,7 +47,7 @@ export function ScheduleTimeline({ days, entries, onEdit }: ScheduleTimelineProp
             <div 
               key={h} 
               className="absolute text-xs text-muted-foreground border-l h-full pl-1"
-              style={{ left: `${(h / 24) * 100}%` }}
+              style={{ left: `${getPercent(h)}%` }}
             >
               {h}:00
             </div>
@@ -46,8 +61,6 @@ export function ScheduleTimeline({ days, entries, onEdit }: ScheduleTimelineProp
           const dayStart = startOfDay(day);
           const dayEnd = endOfDay(day);
           
-          // Filter entries for this day row
-          // We display entries that START on this day.
           const dayEntries = entries.filter(e => {
              return e.startTime >= dayStart.getTime() && e.startTime < dayEnd.getTime();
           });
@@ -62,28 +75,43 @@ export function ScheduleTimeline({ days, entries, onEdit }: ScheduleTimelineProp
 
               {/* Timeline Row */}
               <div className="flex-1 relative h-14 bg-background/50">
+                
+                {/* 9am-5pm Shaded Background */}
+                {Math.max(9, startHour) < Math.min(17, endHour) && (
+                    <div 
+                        className="absolute h-full bg-muted/30 pointer-events-none"
+                        style={{
+                            left: `${getPercent(Math.max(9, startHour))}%`,
+                            width: `${getPercent(Math.min(17, endHour)) - getPercent(Math.max(9, startHour))}%`
+                        }} 
+                    />
+                )}
+
                 {/* Vertical Hour Grid Lines */}
                 {hours.map(h => (
                     <div 
                     key={h} 
                     className="absolute border-l h-full border-muted/20"
-                    style={{ left: `${(h / 24) * 100}%` }}
+                    style={{ left: `${getPercent(h)}%` }}
                     />
                 ))}
 
                 {/* Entry Blocks */}
                 {dayEntries.map(entry => {
-                    const start = new Date(entry.startTime);
-                    const startMinutes = start.getHours() * 60 + start.getMinutes();
-                    const left = (startMinutes / 1440) * 100;
+                    const startDate = new Date(entry.startTime);
+                    const endDate = entry.endTime ? new Date(entry.endTime) : new Date();
                     
-                    const end = entry.endTime ? new Date(entry.endTime) : new Date(); // If active, show until Now
-                    let duration = differenceInMinutes(end, start);
-                    // visual minimum width (e.g. 5 mins -> 0.3%)
-                    if (duration < 5) duration = 5; 
+                    // Position relative to view range
+                    const startRawH = startDate.getHours() + startDate.getMinutes() / 60;
+                    const endRawH = endDate.getHours() + endDate.getMinutes() / 60;
                     
-                    const width = (duration / 1440) * 100;
+                    // Clip visuals to view range (basic clipping)
+                    if (endRawH < startHour || startRawH > endHour) return null;
 
+                    const left = getPercent(startRawH);
+                    const right = getPercent(endRawH);
+                    let width = right - left;
+                    
                     return (
                         <div
                             key={entry.id}
@@ -94,15 +122,14 @@ export function ScheduleTimeline({ days, entries, onEdit }: ScheduleTimelineProp
                             )}
                             style={{ 
                                 left: `${left}%`, 
-                                width: `${width}%`,
+                                width: `${Math.max(width, 0.5)}%`, // min width
                                 minWidth: '4px' 
                             }}
-                            title={`${format(start, 'HH:mm')} - ${entry.endTime ? format(end, 'HH:mm') : 'Now'} (${entry.type})`}
+                            title={`${format(startDate, 'HH:mm')} - ${entry.endTime ? format(endDate, 'HH:mm') : 'Now'} (${entry.type})`}
                         >
-                            {/* Hover info or Label if wide enough */}
-                            {width > 5 && (
+                            {width > 2 && (
                                 <div className="text-[10px] text-white px-1 overflow-hidden whitespace-nowrap truncate leading-8">
-                                    {format(start, 'HH:mm')}
+                                    {format(startDate, 'HH:mm')}
                                 </div>
                             )}
                         </div>

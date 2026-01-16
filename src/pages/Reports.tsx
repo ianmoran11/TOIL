@@ -9,7 +9,7 @@ import {
 } from 'date-fns';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, Legend 
+  PieChart, Pie, Cell, Legend, ReferenceLine
 } from 'recharts';
 import { cn } from '../lib/utils';
 import { ScheduleTimeline } from '../components/ScheduleTimeline';
@@ -20,11 +20,20 @@ import type { TimeEntry } from '../types';
 type Period = 'day' | 'week' | 'fortnight' | 'month';
 type ViewMode = 'stats' | 'timeline';
 
+const formatDecimalHours = (decimalHours: number) => {
+  const hours = Math.floor(decimalHours);
+  const minutes = Math.round((decimalHours - hours) * 60);
+  return `${hours}h ${minutes}m`;
+};
+
 export function Reports() {
   const { entries, projects, updateEntry, deleteEntry } = useTimeStore();
   const [period, setPeriod] = useState<Period>('week');
   const [viewMode, setViewMode] = useState<ViewMode>('stats');
   
+  const [timelineStartHour, setTimelineStartHour] = useState(6);
+  const [timelineEndHour, setTimelineEndHour] = useState(20);
+
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | undefined>(undefined);
 
@@ -160,6 +169,31 @@ export function Reports() {
                     <Calendar size={16} /> Timeline
                 </button>
             </div>
+
+            {viewMode === 'timeline' && (
+                <div className="flex items-center gap-2 text-sm bg-card border rounded-lg px-2 h-10">
+                    <span className="text-muted-foreground text-xs">Range:</span>
+                    <select 
+                        value={timelineStartHour} 
+                        onChange={(e) => setTimelineStartHour(Number(e.target.value))}
+                        className="bg-transparent font-medium focus:outline-none"
+                    >
+                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                            <option key={h} value={h}>{h}:00</option>
+                        ))}
+                    </select>
+                    <span>-</span>
+                    <select 
+                        value={timelineEndHour} 
+                        onChange={(e) => setTimelineEndHour(Number(e.target.value))}
+                        className="bg-transparent font-medium focus:outline-none"
+                    >
+                        {Array.from({ length: 24 }, (_, i) => i + 1).map(h => (
+                            <option key={h} value={h}>{h}:00</option>
+                        ))}
+                    </select>
+                </div>
+            )}
         </div>
         
         <div className="flex p-1 bg-card border rounded-lg">
@@ -181,7 +215,7 @@ export function Reports() {
       <div className="grid gap-4 md:grid-cols-3">
          <div className="bg-card border rounded-xl p-6 shadow-sm">
              <h3 className="text-sm font-medium text-muted-foreground uppercase">Total Hours</h3>
-             <p className="text-4xl font-bold mt-2">{totalWorkHours.toFixed(2)}h</p>
+             <p className="text-4xl font-bold mt-2">{formatDecimalHours(totalWorkHours)}</p>
              <p className="text-sm text-muted-foreground mt-1">
                  {format(range.start, 'MMM d')} - {format(range.end, 'MMM d')}
              </p>
@@ -198,10 +232,17 @@ export function Reports() {
                         <BarChart data={barData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}h`} />
+                            <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => formatDecimalHours(v)} />
                             <Tooltip 
                                 cursor={{ fill: 'transparent' }}
                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                formatter={(value: any) => [formatDecimalHours(Number(value)), 'Hours']}
+                            />
+                            <ReferenceLine 
+                                y={7.5} 
+                                stroke="hsl(var(--muted-foreground))" 
+                                strokeDasharray="3 3" 
+                                label={{ value: "Target (7.5h)", position: "insideTopRight", fill: "hsl(var(--muted-foreground))", fontSize: 12 }} 
                             />
                             <Bar dataKey="workHours" fill="var(--primary)" radius={[4, 4, 0, 0]} />
                         </BarChart>
@@ -229,7 +270,7 @@ export function Reports() {
                                         <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip formatter={(value: any) => [formatDecimalHours(Number(value)), 'Hours']} />
                                 <Legend />
                             </PieChart>
                         </ResponsiveContainer>
@@ -246,6 +287,8 @@ export function Reports() {
             days={eachDayOfInterval(range)}
             entries={filteredEntries}
             onEdit={handleEdit}
+            startHour={timelineStartHour}
+            endHour={timelineEndHour}
         />
       )}
 
