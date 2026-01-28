@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useTimeStore } from '../store/useTimeStore';
-import { format, isToday, isYesterday, differenceInSeconds, subDays } from 'date-fns';
+import { format, isToday, isYesterday, differenceInSeconds } from 'date-fns';
 import { Play, Square, Coffee, Briefcase, Plus, Edit2, Timer, Laptop, List, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { EntryEditor } from '../components/EntryEditor';

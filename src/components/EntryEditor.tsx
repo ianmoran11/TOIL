@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTimeStore } from '../store/useTimeStore';
 import type { TimeEntry, EntryType } from '../types';
 import { format, subDays } from 'date-fns';
-import { X, Trash2, Calendar } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 
 interface EntryEditorProps {
   entry?: TimeEntry; // If provided, edit mode

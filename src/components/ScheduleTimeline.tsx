@@ -1,7 +1,7 @@
 import type { TimeEntry } from '../types';
-import { format, startOfDay, endOfDay, differenceInMinutes } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '../lib/utils';
-import { Edit2, Clock } from 'lucide-react';
+import { Edit2 } from 'lucide-react';
 
 interface ScheduleTimelineProps {
   days: Date[];
@@ -101,7 +101,6 @@ export function ScheduleTimeline({ days, entries, onEdit, startHour = 6, endHour
                 {dayEntries.map(entry => {
                     const startDate = new Date(entry.startTime);
                     const endDate = entry.endTime ? new Date(entry.endTime) : new Date();
-                    const duration = differenceInMinutes(endDate, startDate);
                     
                     // Position relative to view range
                     const startRawH = startDate.getHours() + startDate.getMinutes() / 60;
