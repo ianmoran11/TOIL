@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useTimeStore } from '../store/useTimeStore';
-import { format, isToday, differenceInSeconds } from 'date-fns';
-import { Play, Square, Coffee, Briefcase, Plus, Edit2, Timer, Laptop } from 'lucide-react';
+import { format, isToday, isYesterday, differenceInSeconds, subDays } from 'date-fns';
+import { Play, Square, Coffee, Briefcase, Plus, Edit2, Timer, Laptop, List, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { EntryEditor } from '../components/EntryEditor';
 import type { TimeEntry } from '../types';
@@ -102,6 +102,21 @@ export function Dashboard() {
 
   const totalWorkSeconds = calculateTotalSeconds('active');
   const totalBreakSeconds = calculateTotalSeconds('rest');
+
+  // Get recent entries (last 5 from any day)
+  const recentEntries = entries
+    .filter(e => e.endTime !== null) // Only completed entries
+    .sort((a, b) => b.startTime - a.startTime)
+    .slice(0, 5);
+  
+  // Get yesterday's entries
+  const yesterdayEntries = entries.filter(e => isYesterday(e.startTime));
+  const yesterdayWorkSeconds = yesterdayEntries
+    .filter(e => e.type === 'work' || (e.type === 'break' && e.isWorkingBreak))
+    .reduce((acc, entry) => {
+      const end = entry.endTime || now;
+      return acc + differenceInSeconds(end, entry.startTime);
+    }, 0);
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
@@ -237,6 +252,77 @@ export function Dashboard() {
           <p className="text-3xl font-bold mt-2 text-orange-500">{formatDuration(totalBreakSeconds)}</p>
         </div>
       </div>
+
+      {/* Yesterday's Summary */}
+      {yesterdayWorkSeconds > 0 && (
+        <div className="bg-card border rounded-lg p-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground">Yesterday</h3>
+            <p className="text-lg font-semibold mt-1">{formatDuration(yesterdayWorkSeconds)}</p>
+          </div>
+          <button 
+            className="flex items-center gap-2 text-sm text-primary hover:underline"
+            onClick={() => {
+              // Navigate to Reports page (this would require routing, for now just a placeholder)
+              window.location.hash = '#reports';
+              setTimeout(() => window.location.reload(), 100);
+            }}
+          >
+            View Yesterday's Entries <ArrowRight size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Recent Entries */}
+      {recentEntries.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Recent Entries</h3>
+            <button 
+              className="flex items-center gap-2 text-sm text-primary hover:underline"
+              onClick={() => {
+                window.location.hash = '#reports';
+                setTimeout(() => window.location.reload(), 100);
+              }}
+            >
+              View All <List size={16} />
+            </button>
+          </div>
+          <div className="space-y-2">
+            {recentEntries.map(entry => {
+              const isRecent = isToday(entry.startTime);
+              const dayLabel = isRecent ? 'Today' : isYesterday(entry.startTime) ? 'Yesterday' : format(entry.startTime, 'MMM d');
+              
+              return (
+                <div 
+                  key={entry.id} 
+                  className="flex items-center justify-between p-3 bg-card border rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer"
+                  onClick={() => handleEdit(entry)}
+                >
+                  <div className="flex items-center gap-3">
+                    {entry.type === 'work' ? <Briefcase size={14} className="text-primary"/> : <Coffee size={14} className="text-orange-500"/>}
+                    <div className="text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium capitalize">{entry.type}</span>
+                        <span className="text-xs text-muted-foreground">{dayLabel}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {format(entry.startTime, 'HH:mm')} - {format(entry.endTime!, 'HH:mm')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{formatDuration(differenceInSeconds(entry.endTime!, entry.startTime))}</span>
+                    <button className="p-1 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Edit2 size={14} className="text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Today's List */}
       <div className="space-y-4">

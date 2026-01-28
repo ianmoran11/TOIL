@@ -1,6 +1,7 @@
 import type { TimeEntry } from '../types';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay, differenceInMinutes } from 'date-fns';
 import { cn } from '../lib/utils';
+import { Edit2, Clock } from 'lucide-react';
 
 interface ScheduleTimelineProps {
   days: Date[];
@@ -100,6 +101,7 @@ export function ScheduleTimeline({ days, entries, onEdit, startHour = 6, endHour
                 {dayEntries.map(entry => {
                     const startDate = new Date(entry.startTime);
                     const endDate = entry.endTime ? new Date(entry.endTime) : new Date();
+                    const duration = differenceInMinutes(endDate, startDate);
                     
                     // Position relative to view range
                     const startRawH = startDate.getHours() + startDate.getMinutes() / 60;
@@ -117,19 +119,25 @@ export function ScheduleTimeline({ days, entries, onEdit, startHour = 6, endHour
                             key={entry.id}
                             onClick={() => onEdit(entry)}
                             className={cn(
-                                "absolute h-8 top-3 rounded-sm border cursor-pointer transition-all shadow-sm group",
+                                "absolute h-8 top-3 rounded-sm border cursor-pointer transition-all shadow-sm group hover:scale-105 hover:z-10",
                                 getEntryStyle(entry)
                             )}
                             style={{ 
                                 left: `${left}%`, 
-                                width: `${Math.max(width, 0.5)}%`, // min width
+                                width: `${Math.max(width, 0.5)}%`, 
                                 minWidth: '4px' 
                             }}
-                            title={`${format(startDate, 'HH:mm')} - ${entry.endTime ? format(endDate, 'HH:mm') : 'Now'} (${entry.type})`}
+                            title={`${format(startDate, 'HH:mm')} - ${entry.endTime ? format(endDate, 'HH:mm') : 'Now'} (${entry.type}) - Click to edit`}
                         >
                             {width > 2 && (
-                                <div className="text-[10px] text-white px-1 overflow-hidden whitespace-nowrap truncate leading-8">
-                                    {format(startDate, 'HH:mm')}
+                                <div className="text-[10px] text-white px-1 overflow-hidden whitespace-nowrap truncate leading-8 flex items-center justify-between">
+                                    <span>{format(startDate, 'HH:mm')}</span>
+                                    <Edit2 size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                            )}
+                            {width <= 2 && (
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Edit2 size={10} className="text-white" />
                                 </div>
                             )}
                         </div>

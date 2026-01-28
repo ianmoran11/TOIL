@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useTimeStore } from '../store/useTimeStore';
 import type { TimeEntry, EntryType } from '../types';
-import { format } from 'date-fns';
-import { X, Trash2 } from 'lucide-react';
+import { format, subDays } from 'date-fns';
+import { X, Trash2, Calendar } from 'lucide-react';
 
 interface EntryEditorProps {
   entry?: TimeEntry; // If provided, edit mode
@@ -16,7 +16,9 @@ export function EntryEditor({ entry, isOpen, onClose, onSave, onDelete }: EntryE
   const { projects, tags } = useTimeStore();
 
   const [type, setType] = useState<EntryType>('work');
+  const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('');
   const [projectId, setProjectId] = useState('');
   const [tagIds, setTagIds] = useState<string[]>([]);
@@ -28,8 +30,19 @@ export function EntryEditor({ entry, isOpen, onClose, onSave, onDelete }: EntryE
     if (isOpen) {
       if (entry) {
         setType(entry.type);
-        setStartTime(format(entry.startTime, "yyyy-MM-dd'T'HH:mm"));
-        setEndTime(entry.endTime ? format(entry.endTime, "yyyy-MM-dd'T'HH:mm") : '');
+        const start = new Date(entry.startTime);
+        setStartDate(format(start, 'yyyy-MM-dd'));
+        setStartTime(format(start, 'HH:mm'));
+        
+        if (entry.endTime) {
+          const end = new Date(entry.endTime);
+          setEndDate(format(end, 'yyyy-MM-dd'));
+          setEndTime(format(end, 'HH:mm'));
+        } else {
+          setEndDate('');
+          setEndTime('');
+        }
+        
         setProjectId(entry.projectId || '');
         setTagIds(entry.tagIds || []);
         setNotes(entry.notes || '');
@@ -37,8 +50,11 @@ export function EntryEditor({ entry, isOpen, onClose, onSave, onDelete }: EntryE
       } else {
         // Reset for new entry
         setType('work');
-        setStartTime(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
-        setEndTime(format(new Date(), "yyyy-MM-dd'T'HH:mm")); // Default to now for ease
+        const now = new Date();
+        setStartDate(format(now, 'yyyy-MM-dd'));
+        setStartTime(format(now, 'HH:mm'));
+        setEndDate(format(now, 'yyyy-MM-dd'));
+        setEndTime(format(now, 'HH:mm'));
         setProjectId('');
         setTagIds([]);
         setNotes('');
@@ -47,12 +63,21 @@ export function EntryEditor({ entry, isOpen, onClose, onSave, onDelete }: EntryE
     }
   }, [isOpen, entry]);
 
+  const setQuickDate = (daysOffset: number) => {
+    const date = subDays(new Date(), daysOffset);
+    const dateStr = format(date, 'yyyy-MM-dd');
+    setStartDate(dateStr);
+    if (!endDate || daysOffset < 0) {
+      setEndDate(dateStr);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Parse dates
-    const start = new Date(startTime).getTime();
-    const end = endTime ? new Date(endTime).getTime() : null;
+    const start = new Date(`${startDate}T${startTime}`).getTime();
+    const end = (endDate && endTime) ? new Date(`${endDate}T${endTime}`).getTime() : null;
 
     if (end && end < start) {
       alert("End time cannot be before start time");
@@ -127,27 +152,79 @@ export function EntryEditor({ entry, isOpen, onClose, onSave, onDelete }: EntryE
           )}
 
           {/* Time Inputs */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Start Time</label>
-              <input 
-                type="datetime-local" 
-                required
-                className="w-full p-2 border rounded-md bg-background"
-                value={startTime}
-                onChange={e => setStartTime(e.target.value)}
-              />
+          <div className="space-y-4">
+            {/* Quick Date Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <span className="text-sm font-medium text-muted-foreground self-center">Quick:</span>
+              <button
+                type="button"
+                onClick={() => setQuickDate(0)}
+                className="px-3 py-1 text-xs border rounded-md hover:bg-accent"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickDate(1)}
+                className="px-3 py-1 text-xs border rounded-md hover:bg-accent"
+              >
+                Yesterday
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickDate(7)}
+                className="px-3 py-1 text-xs border rounded-md hover:bg-accent"
+              >
+                Last Week
+              </button>
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium">End Time</label>
-              <input 
-                type="datetime-local" 
-                className="w-full p-2 border rounded-md bg-background"
-                value={endTime}
-                onChange={e => setEndTime(e.target.value)}
-              />
-              <span className="text-xs text-muted-foreground">Leave empty if active</span>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Start Date</label>
+                  <input 
+                    type="date" 
+                    required
+                    className="w-full p-2 border rounded-md bg-background"
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Start Time</label>
+                  <input 
+                    type="time" 
+                    required
+                    className="w-full p-2 border rounded-md bg-background"
+                    value={startTime}
+                    onChange={e => setStartTime(e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">End Date</label>
+                  <input 
+                    type="date" 
+                    className="w-full p-2 border rounded-md bg-background"
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">End Time</label>
+                  <input 
+                    type="time" 
+                    className="w-full p-2 border rounded-md bg-background"
+                    value={endTime}
+                    onChange={e => setEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
+            <span className="text-xs text-muted-foreground">Leave end date/time empty if entry is still active</span>
           </div>
 
           {/* Project Selection */}
