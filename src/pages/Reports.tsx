@@ -5,7 +5,7 @@ import {
   startOfWeek, endOfWeek, 
   startOfMonth, endOfMonth,
   subDays, eachDayOfInterval, 
-  format, isWithinInterval, differenceInMinutes
+  format, isWithinInterval
 } from 'date-fns';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -14,7 +14,7 @@ import {
 import { cn } from '../lib/utils';
 import { ScheduleTimeline } from '../components/ScheduleTimeline';
 import { EntryEditor } from '../components/EntryEditor';
-import { Calendar, BarChart2, List, Edit2, Trash2, SortAsc, SortDesc, Filter } from 'lucide-react';
+import { Calendar, BarChart2, List, Edit2, Trash2, SortAsc, Filter } from 'lucide-react';
 import type { TimeEntry } from '../types';
 
 type Period = 'day' | 'week' | 'fortnight' | 'month';
