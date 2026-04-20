@@ -273,12 +273,58 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Today's List */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Today's Activity</h3>
+          <button
+             onClick={handleAddNew}
+             className="flex items-center gap-2 text-sm text-primary hover:underline"
+          >
+            <Plus size={16} /> Add Entry
+          </button>
+        </div>
+
+        <div className="space-y-2">
+            {todayEntries.length === 0 && <p className="text-muted-foreground">No activity recorded today.</p>}
+            {todayEntries.slice().reverse().map(entry => (
+                <div key={entry.id} className="flex items-center justify-between p-4 bg-card border rounded-lg group">
+                    <div className="flex items-center gap-3">
+                        {entry.type === 'work' ? <Briefcase size={16} className="text-primary"/> : <Coffee size={16} className="text-orange-500"/>}
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium capitalize">{entry.type}</span>
+                                <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                                  {entry.notes && `- ${entry.notes}`}
+                                </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                {format(entry.startTime, 'HH:mm')} - {entry.endTime ? format(entry.endTime, 'HH:mm') : 'Now'}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="font-mono text-sm">
+                            {formatDuration(differenceInSeconds(entry.endTime || now, entry.startTime))}
+                        </div>
+                        <button
+                          onClick={() => handleEdit(entry)}
+                          className="opacity-0 group-hover:opacity-100 p-2 hover:bg-accent rounded-md transition-opacity"
+                        >
+                            <Edit2 size={16} className="text-muted-foreground" />
+                        </button>
+                    </div>
+                </div>
+            ))}
+        </div>
+      </div>
+
       {/* Recent Entries */}
       {recentEntries.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Recent Entries</h3>
-            <button 
+            <button
               className="flex items-center gap-2 text-sm text-primary hover:underline"
               onClick={() => {
                 window.location.hash = '#reports';
@@ -292,10 +338,10 @@ export function Dashboard() {
             {recentEntries.map(entry => {
               const isRecent = isToday(entry.startTime);
               const dayLabel = isRecent ? 'Today' : isYesterday(entry.startTime) ? 'Yesterday' : format(entry.startTime, 'MMM d');
-              
+
               return (
-                <div 
-                  key={entry.id} 
+                <div
+                  key={entry.id}
                   className="flex items-center justify-between p-3 bg-card border rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer"
                   onClick={() => handleEdit(entry)}
                 >
@@ -323,52 +369,6 @@ export function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* Today's List */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Today's Activity</h3>
-          <button 
-             onClick={handleAddNew}
-             className="flex items-center gap-2 text-sm text-primary hover:underline"
-          >
-            <Plus size={16} /> Add Entry
-          </button>
-        </div>
-        
-        <div className="space-y-2">
-            {todayEntries.length === 0 && <p className="text-muted-foreground">No activity recorded today.</p>}
-            {todayEntries.slice().reverse().map(entry => (
-                <div key={entry.id} className="flex items-center justify-between p-4 bg-card border rounded-lg group">
-                    <div className="flex items-center gap-3">
-                        {entry.type === 'work' ? <Briefcase size={16} className="text-primary"/> : <Coffee size={16} className="text-orange-500"/>}
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <span className="font-medium capitalize">{entry.type}</span>
-                                <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                                  {entry.notes && `- ${entry.notes}`}
-                                </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                                {format(entry.startTime, 'HH:mm')} - {entry.endTime ? format(entry.endTime, 'HH:mm') : 'Now'}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="font-mono text-sm">
-                            {formatDuration(differenceInSeconds(entry.endTime || now, entry.startTime))}
-                        </div>
-                        <button 
-                          onClick={() => handleEdit(entry)}
-                          className="opacity-0 group-hover:opacity-100 p-2 hover:bg-accent rounded-md transition-opacity"
-                        >
-                            <Edit2 size={16} className="text-muted-foreground" />
-                        </button>
-                    </div>
-                </div>
-            ))}
-        </div>
-      </div>
       
       <EntryEditor 
         isOpen={isEditorOpen} 
